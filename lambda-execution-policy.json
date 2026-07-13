@@ -10,17 +10,19 @@
                 "s3:DeleteObject"
             ],
             "Resource": [
-                "arn:aws:s3:::data-processing-rgq8r0/*"
+                "arn:aws:s3:::data-processing-zs4nua/*"
             ]
         },
         {
             "Effect": "Allow",
             "Action": [
                 "sqs:SendMessage",
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage",
                 "sqs:GetQueueAttributes"
             ],
             "Resource": [
-                "arn:aws:sqs:eu-north-1:424999960734:data-processing-dlq-rgq8r0"
+                "arn:aws:sqs:eu-north-1:424999960734:data-processing-dlq-zs4nua"
             ]
         },
         {
@@ -29,7 +31,7 @@
                 "sns:Publish"
             ],
             "Resource": [
-                "arn:aws:sns:eu-north-1:424999960734:data-processing-alerts-rgq8r0"
+                "arn:aws:sns:eu-north-1:424999960734:data-processing-alerts-zs4nua"
             ]
         }
     ]

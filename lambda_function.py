@@ -126,7 +126,6 @@ def send_to_dlq(event, error_message):
             'original_event': event,
             'error_message': error_message,
             'timestamp': datetime.now().isoformat(),
-            'retry_count': 1
         }
         try:
             sqs.send_message(

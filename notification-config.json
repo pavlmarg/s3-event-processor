@@ -2,7 +2,7 @@
     "LambdaFunctionConfigurations": [
         {
             "Id": "data-processing-notification",
-            "LambdaFunctionArn": "arn:aws:lambda:eu-north-1:424999960734:function:data-processor-rgq8r0",
+            "LambdaFunctionArn": "arn:aws:lambda:eu-north-1:424999960734:function:data-processor-zs4nua",
             "Events": [
                 "s3:ObjectCreated:*"
             ],

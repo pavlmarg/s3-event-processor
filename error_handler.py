@@ -20,7 +20,7 @@ def lambda_handler(event, context):
             error_message = message_body.get('error_message', 'Unknown error')
             timestamp = message_body.get('timestamp', datetime.now().isoformat())
             original_event = message_body.get('original_event', {})
-            retry_count = message_body.get('retry_count', 1)
+
             
             # Extract S3 object details if available
             s3_details = ""
@@ -39,7 +39,6 @@ Data Processing Error Alert
 
 Error: {error_message}
 Timestamp: {timestamp}
-Retry Attempt: {retry_count}
 {s3_details}
 
 Please investigate the failed processing job.
