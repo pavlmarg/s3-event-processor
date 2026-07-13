@@ -1,0 +1,6 @@
+*.zip
+test-data.csv
+invalid-test.json
+report.json
+versions.json
+markers.json

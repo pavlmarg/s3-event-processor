@@ -1,3 +1,8 @@
+# =====================================================================
+# setup.ps1 - Provisions the full S3 event processing architecture:
+# S3 bucket -> Lambda (processor) -> DLQ -> Lambda (error handler) -> SNS
+# =====================================================================
+
 # Set environment variables
 $AWS_REGION = aws configure get region
 $AWS_ACCOUNT_ID = aws sts get-caller-identity --query Account --output text
@@ -27,7 +32,7 @@ Write-Host "S3 bucket created: $BUCKET_NAME" -ForegroundColor Green
 # Create SNS topic for alerts
 $SNS_TOPIC_ARN = aws sns create-topic --name $SNS_TOPIC_NAME --query TopicArn --output text
 
-# Subscribe email to the topic 
+# Subscribe email to the topic
 aws sns subscribe --topic-arn $SNS_TOPIC_ARN --protocol email --notification-endpoint paulosmargarites553@gmail.com
 
 Write-Host "SNS topic created: $SNS_TOPIC_ARN" -ForegroundColor Green
@@ -42,24 +47,7 @@ $DLQ_ARN = aws sqs get-queue-attributes --queue-url $DLQ_URL --attribute-names Q
 Write-Host "Dead Letter Queue created: $DLQ_ARN" -ForegroundColor Green
 
 # Create the Trust Policy (Tells AWS that Lambda is allowed to use this role)
-$TrustPolicy = @"
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "lambda.amazonaws.com"
-            },
-            "Action": "sts:AssumeRole"
-        }
-    ]
-}
-"@
-$TrustPolicy | Out-File -FilePath "trust-policy.json" -Encoding ascii
-
-# Create the actual IAM Role using the Trust Policy
-aws iam create-role --role-name $LAMBDA_ROLE_NAME --assume-role-policy-document file://trust-policy.json | Out-Null
+aws iam create-role --role-name $LAMBDA_ROLE_NAME --assume-role-policy-document file://iam/trust-policy.json | Out-Null
 
 # Create your Custom Permissions Policy for S3, SQS, and SNS
 $ExecutionPolicy = @"
@@ -102,10 +90,10 @@ $ExecutionPolicy = @"
     ]
 }
 "@
-$ExecutionPolicy | Out-File -FilePath "lambda-execution-policy.json" -Encoding ascii
+$ExecutionPolicy | Out-File -FilePath "lambda-execution-policy.generated.json" -Encoding ascii
 
 # Attach custom Permissions Policy to the Role
-aws iam put-role-policy --role-name $LAMBDA_ROLE_NAME --policy-name DataProcessingPolicy --policy-document file://lambda-execution-policy.json
+aws iam put-role-policy --role-name $LAMBDA_ROLE_NAME --policy-name DataProcessingPolicy --policy-document file://lambda-execution-policy.generated.json
 
 # Attach the basic AWS managed policy so Lambda can write error logs to CloudWatch
 aws iam attach-role-policy --role-name $LAMBDA_ROLE_NAME --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -114,7 +102,7 @@ Write-Host "IAM Role and security policies successfully created and attached" -F
 
 # Zip up the Python application code
 Write-Host "Zipping deployment package..." -ForegroundColor Cyan
-Compress-Archive -Path .\lambda_function.py -DestinationPath .\data_processor.zip -Force
+Compress-Archive -Path .\src\lambda_function.py -DestinationPath .\data_processor.zip -Force
 
 # Wait for IAM role to propagate
 Write-Host "Waiting 15 seconds for IAM role to propagate through AWS..." -ForegroundColor Yellow
@@ -137,7 +125,7 @@ Write-Host "Data processing Lambda function created: $LAMBDA_ARN" -ForegroundCol
 
 # Zip up the Python error handler code
 Write-Host "Zipping error handler package..." -ForegroundColor Cyan
-Compress-Archive -Path .\error_handler.py -DestinationPath .\error_handler.zip -Force
+Compress-Archive -Path .\src\error_handler.py -DestinationPath .\error_handler.zip -Force
 
 # Create the Error Handler Lambda function
 $ERROR_HANDLER_ARN = aws lambda create-function `
@@ -162,7 +150,6 @@ aws lambda create-event-source-mapping `
     --maximum-batching-window-in-seconds 5 | Out-Null
 
 Write-Host "SQS event source mapping created for error handler" -ForegroundColor Green
-
 
 # Add permission for S3 to invoke the main Lambda
 Write-Host "Granting S3 permission to invoke the Data Processor Lambda..." -ForegroundColor Cyan
@@ -201,12 +188,12 @@ $NotificationConfig = @"
     ]
 }
 "@
-$NotificationConfig | Out-File -FilePath "notification-config.json" -Encoding ascii
+$NotificationConfig | Out-File -FilePath "notification-config.generated.json" -Encoding ascii
 
 # Apply notification configuration
 aws s3api put-bucket-notification-configuration `
     --bucket $BUCKET_NAME `
-    --notification-configuration file://notification-config.json
+    --notification-configuration file://notification-config.generated.json
 
 Write-Host "S3 event notifications configured! Architecture is fully wired." -ForegroundColor Green
 
